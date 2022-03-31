@@ -2,3 +2,6 @@ steps:
   - name: maven:3-jdk-8
     entrypoint: mvn
     args: ['package','-Dmaven.test.skip=true']
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', 'gcr.io/lg-workshop-common-tooling/gcs_to_bq_df_job', '--build-arg=JAR_FILE=target/pubsub-gcs-notification-to-bq-1.0-SNAPSHOT.jar', '.']
+    images: ['gcr.io/lg-workshop-common-tooling/gcs_to_bq_df_job']
