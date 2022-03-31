@@ -104,16 +104,14 @@ public class PubSubGcsNotificationToBQ {
         String schema = getOptions().getSchema();
         String outputTable = getOptions().getBqTable();
         TableSchema tableSchema = getBqSchema(schema);
-        PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications", fromPubSub(topicName));
 
+
+        PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications", fromPubSub(topicName));
         PCollection<String> files = notifications.apply("Extract File Path",
                 MapElements.into(TypeDescriptors.strings()).via( n -> extractPath(n)));
-
         PCollection<String> content = files.apply("Read Files", TextIO.readAll());
-
         PCollection<TableRow> rows = files.apply("To BQ Row",
                 MapElements.into(new TypeDescriptor<TableRow>() {}).via( r -> toBqRow(r, schema)));
-
         rows.apply("Write to BigQuery",writeToBq(outputTable, tableSchema));
 
          return getPipeline();
