@@ -23,8 +23,13 @@ public class PubSubGcsNotificationToBQ {
     private CustomPipelineOptions options;
     private Pipeline pipeline;
 
+    public PubSubGcsNotificationToBQ(){
+
+    }
+
     public PubSubGcsNotificationToBQ(Pipeline pipeline, CustomPipelineOptions options){
         this.options = options;
+        this.pipeline = pipeline;
     }
 
     public Pipeline getPipeline() {
@@ -76,18 +81,25 @@ public class PubSubGcsNotificationToBQ {
         return new TableSchema().setFields(fields);
     }
 
-    public TableRow toBqRow(String r, String schemaString){
-        TableSchema schema = getBqSchema(schemaString);
-        TableRow row = new TableRow();
-        List<TableFieldSchema> fieldsSchema = schema.getFields();
-        String[] fields =r.split(",");
+    public MapElements<String, TableRow> toBqRow(){
 
-        for(int i =0;i<fieldsSchema.size();i++)
-            row.set(fieldsSchema.get(i).getName(), fields[i]);
+        return MapElements.into(new TypeDescriptor<TableRow>() {}).via( (String record) -> {
+            TableSchema schema = getBqSchema(getOptions().getSchema());
+            TableRow row = new TableRow();
 
-        return row;
+            List<TableFieldSchema> fieldsSchema = schema.getFields();
+            String[] fields = record.split(",");
+
+            for(int i =0;i<fieldsSchema.size();i++)
+                row.set(fieldsSchema.get(i).getName(), fields[i]);
+
+            return row;
+        });
     }
 
+    public MapElements<String, String> getFilePath(){
+        return MapElements.into(TypeDescriptors.strings()).via( (String n) -> extractPath(n));
+    }
     public BigQueryIO.Write<TableRow> writeToBq(String outputTable, TableSchema tableSchema){
         return BigQueryIO
                 .writeTableRows()
@@ -105,14 +117,11 @@ public class PubSubGcsNotificationToBQ {
         String outputTable = getOptions().getBqTable();
         TableSchema tableSchema = getBqSchema(schema);
 
-
         PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications", fromPubSub(topicName));
-        PCollection<String> files = notifications.apply("Extract File Path",
-                MapElements.into(TypeDescriptors.strings()).via( n -> extractPath(n)));
-        PCollection<String> content = files.apply("Read Files", TextIO.readAll());
-        PCollection<TableRow> rows = files.apply("To BQ Row",
-                MapElements.into(new TypeDescriptor<TableRow>() {}).via( r -> toBqRow(r, schema)));
-        rows.apply("Write to BigQuery",writeToBq(outputTable, tableSchema));
+        PCollection<String> files = notifications.apply("Extract File Path", getFilePath());
+        PCollection<String> contents = files.apply("Read Files", TextIO.readAll());
+        //PCollection<TableRow> rows = contents.apply("To BQ Row", toBqRow());
+        //rows.apply("Write to BigQuery",writeToBq(outputTable, tableSchema));
 
          return getPipeline();
     }
