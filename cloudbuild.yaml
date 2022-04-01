@@ -2,6 +2,3 @@ steps:
   - name: maven:3-jdk-11
     entrypoint: mvn
     args: ['package','-Dmaven.test.skip=true']
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'gcloud'
-    args: ["gsutil", "cp", "target/.jar", "gs://code_bucket"]

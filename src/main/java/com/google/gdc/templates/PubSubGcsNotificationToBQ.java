@@ -124,6 +124,7 @@ public class PubSubGcsNotificationToBQ {
         //PCollection<TableRow> rows = contents.apply("To BQ Row", toBqRow());
         //rows.apply("Write to BigQuery",writeToBq(outputTable, tableSchema));
 
+        ValueProvider s = ValueProvider.StaticValueProvider.of("test");
          return getPipeline();
     }
 

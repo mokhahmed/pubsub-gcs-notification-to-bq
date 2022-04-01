@@ -6,6 +6,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 public interface CustomPipelineOptions extends DataflowPipelineOptions {
 
+
     @Description("PubSub topic")
     ValueProvider<String> getTopic();
     void setTopic(ValueProvider<String> topic);
