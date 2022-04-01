@@ -8,10 +8,12 @@ bucket_path = models.Variable.get("bucket_path")
 code_bucket_path = models.Variable.get("code_bucket_path")
 project_id = models.Variable.get("project_id")
 gce_zone = models.Variable.get("gce_zone")
-topic = models.Variable.get("topic")
-bqTable = models.Variable.get("bqTable")
-filesFormat = models.Variable.get("filesFormat")
-schema = models.Variable.get("schema")
+
+
+topic = ""
+bqTable = ""
+filesFormat = ""
+schema = ""
 
 default_args = {
     "start_date": days_ago(1),
