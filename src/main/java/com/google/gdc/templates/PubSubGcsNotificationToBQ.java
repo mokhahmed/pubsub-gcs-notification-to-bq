@@ -9,6 +9,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -74,8 +75,8 @@ public class PubSubGcsNotificationToBQ {
         }
     }
 
-    public TableSchema getBqSchema(String schemaString){
-        Map<String, String> schema  =  parseSchemaString(schemaString);
+    public TableSchema getBqSchema(ValueProvider<String> schemaString){
+        Map<String, String> schema  =  parseSchemaString(schemaString.toString());
         List<TableFieldSchema> fields = new ArrayList<>();
         schema.forEach( (k, v) -> fields.add(new TableFieldSchema().setName(k).setType(v)));
         return new TableSchema().setFields(fields);
@@ -113,7 +114,7 @@ public class PubSubGcsNotificationToBQ {
     public Pipeline build(){
 
         String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic();
-        String schema = getOptions().getSchema();
+        ValueProvider<String> schema = getOptions().getSchema();
         String outputTable = getOptions().getBqTable();
         TableSchema tableSchema = getBqSchema(schema);
 
