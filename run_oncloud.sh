@@ -14,7 +14,7 @@ shift
 
 echo "Launching $MAIN project=$PROJECT bucket=$BUCKET $*"
 
-"$MAVEN_HOME"/mvn compile -e exec:java \
+mvn compile -e exec:java \
  -Dexec.mainClass=$MAIN \
       -Dexec.args="--project=$PROJECT \
       --topic=\
