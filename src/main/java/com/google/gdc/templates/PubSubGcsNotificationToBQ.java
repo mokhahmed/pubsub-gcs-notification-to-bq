@@ -113,9 +113,9 @@ public class PubSubGcsNotificationToBQ {
 
     public Pipeline build(){
 
-        String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic();
+        String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic().toString();
         ValueProvider<String> schema = getOptions().getSchema();
-        String outputTable = getOptions().getBqTable();
+        String outputTable = getOptions().getBqTable().toString();
         TableSchema tableSchema = getBqSchema(schema);
 
         PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications", fromPubSub(topicName));

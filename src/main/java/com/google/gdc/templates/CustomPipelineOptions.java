@@ -8,10 +8,10 @@ public interface CustomPipelineOptions extends DataflowPipelineOptions {
 
     @Description("PubSub topic")
     ValueProvider<String> getTopic();
-    void setTopic(String topic);
+    void setTopic(ValueProvider<String> topic);
 
     @Description("BQ table name")
-    String getBqTable();
+    ValueProvider<String>  getBqTable();
     void setBqTable(ValueProvider<String> bqTable);
 
     @Description("Files Format")
