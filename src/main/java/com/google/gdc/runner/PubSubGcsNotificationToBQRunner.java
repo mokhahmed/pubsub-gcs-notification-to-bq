@@ -9,7 +9,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 public class PubSubGcsNotificationToBQRunner {
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args)  {
 
         PipelineOptionsFactory.register(CustomPipelineOptions.class);
         CustomPipelineOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CustomPipelineOptions.class);
@@ -18,7 +18,11 @@ public class PubSubGcsNotificationToBQRunner {
 
         PubSubGcsNotificationToBQ runner = new PubSubGcsNotificationToBQ(pipeline, options);
 
-        runner.build().run();
+        try {
+            runner.build().run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

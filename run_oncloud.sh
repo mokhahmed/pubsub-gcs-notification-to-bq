@@ -19,10 +19,11 @@ mvn compile -e exec:java \
       -Dexec.args="--project=$PROJECT \
       --topic=\
       --bqTable=\
-      --filesFormat=\
-      --schema=\
+      --inputFilesFormat=\
+      --fileDelimiter=\
+      --inputSchema=\
+      --outputSchema=\
       --region=europe-central2\
       --stagingLocation=gs://$BUCKET/staging/ $* \
       --tempLocation=gs://$BUCKET/staging/ \
-      --runner=DataflowRunner\
-      --numWorkers=2"
+      --runner=DataflowRunner"

@@ -6,22 +6,28 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 public interface CustomPipelineOptions extends DataflowPipelineOptions {
 
-
     @Description("PubSub topic")
     ValueProvider<String> getTopic();
     void setTopic(ValueProvider<String> topic);
 
-    @Description("BQ table name")
+    @Description("BQ output table name")
     ValueProvider<String>  getBqTable();
     void setBqTable(ValueProvider<String> bqTable);
 
-    @Description("Files Format")
-    ValueProvider<String> getFilesFormat();
-    void setFilesFormat(ValueProvider<String> format);
+    @Description("Input Files Format")
+    ValueProvider<String> getInputFilesFormat();
+    void setInputFilesFormat(ValueProvider<String> inputFilesFormat);
 
-    @Description("Files Schema")
-    ValueProvider<String> getSchema();
-    void setSchema(ValueProvider<String> schema);
+    @Description("Input Schema")
+    ValueProvider<String> getInputSchema();
+    void setInputSchema(ValueProvider<String> inputSchema);
 
+    @Description("Output Schema")
+    ValueProvider<String> getOutputSchema();
+    void setOutputSchema(ValueProvider<String> outputSchema);
+
+    @Description("File Delimiter")
+    ValueProvider<String> getFileDelimiter();
+    void setFileDelimiter(ValueProvider<String> fileDelimiter);
 
 }

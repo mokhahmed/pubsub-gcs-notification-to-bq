@@ -1,28 +1,32 @@
 package com.google.gdc.templates;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.gdc.IO.IOBuilders;
+import com.google.gdc.utils.SchemaParser;
+import com.google.gdc.utils.Utilities;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
-import java.util.Map;
 
 
 public class PubSubGcsNotificationToBQ {
 
     private CustomPipelineOptions options;
     private Pipeline pipeline;
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaParser.class);
 
     public PubSubGcsNotificationToBQ(){
 
@@ -50,58 +54,13 @@ public class PubSubGcsNotificationToBQ {
     }
 
 
-    public  PubsubIO.Read<String> fromPubSub(String topicName){
-        return PubsubIO.readStrings().fromTopic(topicName);
-    }
-
-    public static  String extractPath(String notification) {
-        try {
-            Map<String, String> event = (Map<String, String>) new ObjectMapper()
-                    .readValue(notification, Map.class).get("event");
-            return "gs://" + event.get("bucket") + "/" + event.get("name");
-        }catch (JsonProcessingException ex){
-            ex.printStackTrace();
-            return null;
-        }
-    }
-
-    public  Map<String, String> parseSchemaString(String schemaString) {
-        try {
-            Map<String, String> schema = (Map<String, String>) new ObjectMapper().readValue(schemaString, Map.class);
-            return schema;
-        }catch (JsonProcessingException ex){
-            ex.printStackTrace();
-            return null;
-        }
-    }
-
-    public TableSchema getBqSchema(ValueProvider<String> schemaString){
-        Map<String, String> schema  =  parseSchemaString(schemaString.toString());
-        List<TableFieldSchema> fields = new ArrayList<>();
-        schema.forEach( (k, v) -> fields.add(new TableFieldSchema().setName(k).setType(v)));
-        return new TableSchema().setFields(fields);
-    }
-
-    public MapElements<String, TableRow> toBqRow(){
-
-        return MapElements.into(new TypeDescriptor<TableRow>() {}).via( (String record) -> {
-            TableSchema schema = getBqSchema(getOptions().getSchema());
-            TableRow row = new TableRow();
-
-            List<TableFieldSchema> fieldsSchema = schema.getFields();
-            String[] fields = record.split(",");
-
-            for(int i =0;i<fieldsSchema.size();i++)
-                row.set(fieldsSchema.get(i).getName(), fields[i]);
-
-            return row;
-        });
-    }
-
     public MapElements<String, String> getFilePath(){
-        return MapElements.into(TypeDescriptors.strings()).via( (String n) -> extractPath(n));
+        return MapElements.into(TypeDescriptors.strings()).via( (String n) ->
+                Utilities.extractPath(n, "gs://"));
     }
-    public BigQueryIO.Write<TableRow> writeToBq(String outputTable, TableSchema tableSchema){
+
+    public BigQueryIO.Write<TableRow> writeToBq(String outputTable, String outputSchemaPath) throws Exception {
+        TableSchema tableSchema = SchemaParser.convertJsonToTableSchema(outputSchemaPath);
         return BigQueryIO
                 .writeTableRows()
                 .to(outputTable)
@@ -111,20 +70,43 @@ public class PubSubGcsNotificationToBQ {
     }
 
 
-    public Pipeline build(){
+    public  static MapElements<String, TableRow> stringToBqRow(String schema, String delimiter) {
+
+        return MapElements.into(new TypeDescriptor<TableRow>() {}).via((String record) -> {
+            TableSchema tableSchema = null;
+            try {
+                tableSchema = SchemaParser.convertJsonToTableSchema(schema);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return Utilities.convertStringToBqRow(record, tableSchema, delimiter);
+        });
+    }
+
+    public Pipeline build() throws Exception {
 
         String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic().toString();
-        ValueProvider<String> schema = getOptions().getSchema();
-        String outputTable = getOptions().getBqTable().toString();
-        TableSchema tableSchema = getBqSchema(schema);
+        ValueProvider<String> inputSchemaPath = getOptions().getInputSchema();
+        ValueProvider<String> outputTable = getOptions().getBqTable();
+        ValueProvider<String> outputSchemaPath = getOptions().getOutputSchema();
+        ValueProvider<String> fileDelimiter = getOptions().getFileDelimiter();
 
-        PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications", fromPubSub(topicName));
-        PCollection<String> files = notifications.apply("Extract File Path", getFilePath());
-        PCollection<String> contents = files.apply("Read Files", TextIO.readAll());
-        //PCollection<TableRow> rows = contents.apply("To BQ Row", toBqRow());
-        //rows.apply("Write to BigQuery",writeToBq(outputTable, tableSchema));
+        PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications",
+                IOBuilders.fromPubSub(topicName));
 
-        ValueProvider s = ValueProvider.StaticValueProvider.of("test");
+        PCollection<String> files = notifications.apply("Extract File Path",
+                getFilePath());
+
+        PCollection<String> contents = files.apply("Read Files", FileIO.matchAll())
+                .apply(FileIO.readMatches())
+                .apply(TextIO.readFiles());
+
+        PCollection<TableRow> rows = contents.apply("To BQ Row",
+                stringToBqRow(inputSchemaPath.get(),fileDelimiter.get() ));
+
+        rows.apply("Write to BigQuery",
+                writeToBq(outputTable.get(), outputSchemaPath.get()));
+
          return getPipeline();
     }
 
