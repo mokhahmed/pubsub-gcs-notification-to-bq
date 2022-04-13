@@ -1,5 +1,6 @@
 package com.google.gdc.templates;
 
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.gdc.IO.IOBuilders;
@@ -9,26 +10,30 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class PubSubGcsNotificationToBQ {
+public class PubSubMultiGcsFoldersNotificationToBQ {
 
-    private PubSubGcsNotificationOptions options;
+    private PubSubMultiGcsFoldersNotificationOptions options;
     private Pipeline pipeline;
 
     private static final Logger LOG = LoggerFactory.getLogger(SchemaParser.class);
 
-    public PubSubGcsNotificationToBQ(){
+    public PubSubMultiGcsFoldersNotificationToBQ(){
 
     }
 
-    public PubSubGcsNotificationToBQ(Pipeline pipeline, PubSubGcsNotificationOptions options){
+    public PubSubMultiGcsFoldersNotificationToBQ(Pipeline pipeline,
+                                                 PubSubMultiGcsFoldersNotificationOptions options){
         this.options = options;
         this.pipeline = pipeline;
     }
@@ -41,11 +46,11 @@ public class PubSubGcsNotificationToBQ {
         this.pipeline = pipeline;
     }
 
-    public PubSubGcsNotificationOptions getOptions() {
+    public PubSubMultiGcsFoldersNotificationOptions getOptions() {
         return options;
     }
 
-    public void setOptions(PubSubGcsNotificationOptions options) {
+    public void setOptions(PubSubMultiGcsFoldersNotificationOptions options) {
         this.options = options;
     }
 
@@ -79,61 +84,48 @@ public class PubSubGcsNotificationToBQ {
         });
     }
 
+
     public Pipeline build() throws Exception {
 
-        String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic().toString();
-        String inputSchemaPath = getOptions().getInputSchema().get();
-        String outputTable = getOptions().getBqTable().get();
-        String outputSchemaPath = getOptions().getOutputSchema().get();
-        String fileDelimiter = getOptions().getFileDelimiter().get();
+        String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic().get();
+        String jobConfigPath = getOptions().getJobConfigurationPath().get();
 
-        PCollection<String>  notifications = getPipeline().apply("Read GCS Notifications",
-                IOBuilders.fromPubSub(topicName));
+        JSONObject jobConfig = SchemaParser.parseSchemaFile(jobConfigPath);
 
-        PCollection<String> files = notifications.apply("Extract File Path",
-                getFilePath());
-
-        PCollection<String> contents = files.apply("lookup Files", FileIO.matchAll())
-                .apply("Filter Matches", FileIO.readMatches())
-                .apply("Read Files", TextIO.readFiles());
-
-        PCollection<TableRow> rows = contents.apply("To BQ Row", stringToBqRow(inputSchemaPath, fileDelimiter));
-
-        rows.apply("Write to BigQuery", writeToBq(outputTable, outputSchemaPath));
-
-         return getPipeline();
-    }
-
-
-    public Pipeline readFromMultipleSources() throws Exception {
-
-        String topicName = "projects/" + getOptions().getProject() + "/topics/"+ getOptions().getTopic().toString();
-        String fileDelimiter = getOptions().getFileDelimiter().get();
-
-        PCollection<String>  notifications = getPipeline().
-                apply("Read GCS Notifications", IOBuilders.fromPubSub(topicName));
+        PCollection<String>  notifications = getPipeline()
+                .apply("Read GCS Notifications", IOBuilders.fromPubSub(topicName));
 
         PCollection<String> files = notifications
                 .apply("Extract File Path", getFilePath());
 
-        processSource(files);
+        for(String key: jobConfig.keySet())
+            processSource(files, jobConfig.getJSONObject(key));
 
         return getPipeline();
     }
 
-    private void processSource(PCollection<String> files) throws Exception {
+    private void processSource(PCollection<String> files, JSONObject sourceConfig) throws Exception {
 
-        String inputSchemaPath="";
-        String outputTable="";
-        String outputSchemaPath="";
-        String fileDelimiter="";
+        String inputSchemaPath=sourceConfig.getString("inputSchemaPath");
+        String outputTable=sourceConfig.getString("outputBqTableName");
+        String outputSchemaPath=sourceConfig.getString("outputSchemaPath");
+        String fileDelimiter=sourceConfig.getString("delimiter");
+        String sourceName =sourceConfig.getString("name");
+        String matcher =sourceConfig.getString("patternMatcher");
+
         PCollection<String> contents = files
-                .apply("lookup Files", FileIO.matchAll())
-                .apply("Filter Matches", FileIO.readMatches())
-                .apply("Read Files", TextIO.readFiles());
+                .apply("Filter Only Source Files",
+                        Filter.by((SerializableFunction<String, Boolean>) input -> input.contains(matcher)))
+                .apply("lookup Files",
+                        FileIO.matchAll())
+                .apply("Filter Matches",
+                        FileIO.readMatches())
+                .apply("Read Files",
+                        TextIO.readFiles());
 
         PCollection<TableRow> rows = contents
-                .apply("To BQ Row", stringToBqRow(inputSchemaPath, fileDelimiter));
+                .apply("To BQ Row",
+                        stringToBqRow(inputSchemaPath, fileDelimiter));
 
         rows.apply("Write to BigQuery", writeToBq(outputTable, outputSchemaPath));
     }

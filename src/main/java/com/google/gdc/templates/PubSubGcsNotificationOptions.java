@@ -4,7 +4,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.ValueProvider;
 
-public interface CustomPipelineOptions extends DataflowPipelineOptions {
+public interface PubSubGcsNotificationOptions extends DataflowPipelineOptions {
 
     @Description("PubSub topic")
     ValueProvider<String> getTopic();

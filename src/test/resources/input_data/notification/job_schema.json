@@ -1,0 +1,20 @@
+{
+
+  "COMPANY_DATA_SOURCE" : {
+    "name":"company",
+    "patternMatcher": "company",
+    "delimiter": ",",
+    "inputSchemaPath": "src/test/resources/input_data/schemas/company_schema.json",
+    "outputSchemaPath": "src/test/resources/input_data/schemas/company_schema.json",
+    "outputBqTableName":""
+  },
+
+  "PERSON_DATA_SOURCE" : {
+    "name":"person",
+    "patternMatcher": "person",
+    "delimiter": "\\|",
+    "inputSchemaPath": "src/test/resources/input_data/schemas/person_schema.json",
+    "outputSchemaPath": "src/test/resources/input_data/schemas/person_schema.json",
+    "outputBqTableName":""
+  }
+}

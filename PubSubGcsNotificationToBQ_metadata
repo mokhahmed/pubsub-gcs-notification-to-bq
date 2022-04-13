@@ -1,0 +1,15 @@
+{
+  "name": "PubSubGcsNotificationToBQ",
+  "description": "",
+  "parameters": [
+    {
+      "name": "inputFilePattern",
+      "label": "Input file(s) in Cloud Storage",
+      "helpText": "The input file pattern Dataflow reads from. Ex: gs://your-bucket/uncompressed/*.txt",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "TEXT"
+    }
+  ]
+}

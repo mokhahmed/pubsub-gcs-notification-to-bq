@@ -22,6 +22,7 @@ public class Utilities {
         }
     }
 
+
     public static TableRow convertStringToBqRow(String record, TableSchema tableSchema, String delimiter) {
         List<TableFieldSchema> fieldsSchema = tableSchema.getFields();
 

@@ -47,8 +47,8 @@ public class PubSubGcsNotificationToBQTests {
 
         Pipeline p = Pipeline.create(testOption);
 
-        String inputPath = "src/test/resources/notification/notification.avro";
-        String inputSchemaPath = "src/test/resources/notification/input_schema.json";
+        String inputPath = "src/test/resources/input_data/notification/notification.avro";
+        String inputSchemaPath = "src/test/resources/input_data/notification/job_schema.json";
         //String schemaString = "{\"name\":\"string\", \"age\":\"string\", \"country\":\"string\"}";
         String delimiter = "\\|";
         PCollection<String> notifications= p.apply(IOBuilders.fromFile(inputPath));
